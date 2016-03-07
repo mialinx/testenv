@@ -34,6 +34,7 @@ class Runner(object):
         self.servers = {}    # server instances
         self.basedir = None  # dir with temporary env
         self.confdir = None  # dir with config
+        self.pid = os.getpid()
         self.exit_code = 0
 
     def parse_params(self):
@@ -70,17 +71,15 @@ class Runner(object):
                     return environ[name]
                 if len(groups) == 1:
                     return name
-                kind = groups[1]
-                if kind == 'addr':
+                sname = groups[1]
+                kind = groups[2]
+                if kind in ('addr', 'ip', 'port'):
                     ip = utils.free_ip()
                     port = utils.free_port(ip)
-                    environ[name] = '{0}:{1}'.format(ip, port)
-                elif kind == 'port':
-                    ip_name = name[:-5] + '_ip'
-                    ip = environ.setdefault(ip_name, utils.free_ip())
-                    environ[name] = utils.free_port(ip)
-                elif kind == 'ip':
-                    environ[name] = utils.free_ip()
+                    addr = '{0}:{1}'.format(ip, port)
+                    environ.setdefault(sname + '_ip', ip)
+                    environ.setdefault(sname + '_port', port)
+                    environ.setdefault(sname + '_addr', addr)
                 elif kind == 'dir':
                     environ[name] = os.path.join(self.basedir, name)
                     os.makedirs(environ[name])
@@ -89,14 +88,13 @@ class Runner(object):
                 else:
                     raise ValueError("unexpected pattern {0} in {1}".format(match.group(0), '/'.join(trail)))
                 return environ[name]
-            s = re.sub(r'\$(\w+_(\w+))\$', one, s)
+            s = re.sub(r'\$((\w+)_(\w+))\$', one, s)
             s = re.sub(r'\$(\w+)\$', one, s)
             return s
         self.config = utils.walk(self.config, handle)
         self.environ.update(self.config.get('extra', {}))
 
     def stop_by_signal(self, signup, frame):
-        pprint.pprint("signal handler")
         raise Exception("signaled with " + str(signup))
 
     def setup_signals(self):
@@ -107,11 +105,23 @@ class Runner(object):
         for s in self.signals:
             signal.signal(s, signal.SIG_DFL)
 
+    def confpath(self, path):
+        if os.path.isabs(path):
+            return path
+        else:
+            return os.path.join(self.confdir, path)
+
+    def basepath(self, path):
+        if os.path.isabs(path):
+            return path
+        else:
+            return os.path.join(self.basedir, path)
+
     def open_log(self):
         self.orig_stderr = os.fdopen(os.dup(sys.stderr.fileno()))
         self.orig_stdout = os.fdopen(os.dup(sys.stdout.fileno()))
         if self.config['log'] is not None:
-            log = open(self.config['log'], 'w', buffering=1)
+            log = open(self.basepath(self.config['log']), 'w', buffering=1)
             os.dup2(log.fileno(), sys.stderr.fileno())
             os.dup2(log.fileno(), sys.stdout.fileno())
 
@@ -133,16 +143,31 @@ class Runner(object):
             sclass = utils.load_class(stype)
             self.servers[name] = sclass(self, name, sconf)
 
+    def order_servers(self):
+        ordered = []
+        stack = []
+        def add(server):
+            if server in stack:
+                bad = ', '.join(s.name for s in stack)
+                raise Exception("dependency cycle with servers: " + bad)
+            stack.append(server)
+            for s in server.after:
+                if s not in self.servers:
+                    raise Exception("wrong dependency {0}: no such server".format(s))
+                add(self.servers[s])
+            if server not in ordered:
+                ordered.append(server)
+            stack.pop()
+        for s in self.servers.values():
+            add(s)
+        return ordered
+
     def start_servers(self):
-        # TODO: ordered, parallel
-        for name, s in self.servers.iteritems():
-            pprint.pprint('preparing ' + name)
+        servers = self.order_servers()
+        for s in servers:
             s.prepare()
-            pprint.pprint('starting ' + name)
             s.start()
-            pprint.pprint('waiting ' + name)
             s.wait_ready()
-            pprint.pprint('filling ' + name)
             s.fill()
 
     def run_command(self):
@@ -156,13 +181,10 @@ class Runner(object):
         self.exit_code = p.returncode
 
     def stop_servers(self):
-        for s in self.servers.itervalues():
-            import time
-            pprint.pprint([s.name, time.time(), s.is_running()])
+        servers = self.order_servers()
+        for s in reversed(servers):
             if s.is_running():
                 s.stop()
-                pprint.pprint([s.name, time.time()])
-
 
     def cleanup(self):
         if self.config['basedir_cleanup'] or self.config['basedir'] == self.BASEDIR_TEMP:
@@ -174,20 +196,15 @@ class Runner(object):
         sys.path.append(self.confdir)
         self.read_config()
         self.setup_signals()
-        self.open_log()
         try:
             self.create_basedir()
+            self.open_log()
             self.parametrize_config()
-            pprint.pprint('creating servers')
             self.create_servers()
-            pprint.pprint('starting servers')
             self.start_servers()
-            pprint.pprint('run command')
             self.run_command()
         finally:
-            pprint.pprint('stoping servers')
-            self.stop_servers()
-            self.cleanup()
-
-        sys.exit(self.exit_code)
-
+            if os.getpid() == self.pid:
+                self.stop_servers()
+                self.cleanup()
+                sys.exit(self.exit_code)

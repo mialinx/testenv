@@ -18,22 +18,26 @@ class Server(object):
     stderr = None
     environ = None
     address = None
+    after = None
 
     def __init__(self, runner, name, cfg):
         self.runner = runner
         self.name = name
         self.basedir = os.path.join(self.runner.basedir, self.name)
         self.init(**cfg)
+        if isinstance(self.after, list):
+            pass
+        elif self.after is None:
+            self.after = []
+        else:
+            self.after = [self.after]
 
     def init(self, **kwargs):
         for k, v in kwargs.iteritems():
             setattr(self, k, v)
 
     def confpath(self, path):
-        if os.path.isabs(path):
-            return path
-        else:
-            return os.path.join(self.runner.confdir, path)
+        return self.runner.confpath(path)
 
     def basepath(self, path):
         if os.path.isabs(path):
@@ -122,3 +126,4 @@ class GenericServer(Server):
         if self.config is not None:
             config_writer = self.CONFIGTYPES[self.configtype]
             config_writer(self.basepath(self.configfile), self.config)
+

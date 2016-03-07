@@ -63,3 +63,8 @@ class Tarantool(server.Server):
         cfg += "dofile('{0}')".format(self.lua_script)
         with contextlib.closing(open(self.configfile, "w")) as fh:
             fh.write(cfg)
+
+    def is_ready(self):
+        res = utils.wait_for_socket(self.address, maxtime=0)
+        return res
+

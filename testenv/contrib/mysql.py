@@ -106,7 +106,7 @@ class MySQL(server.Server):
 
         p = subprocess.Popen([self.mysql_install_db_bin, '--defaults-file=' + self.configfile],
                 stdout=open("/dev/null", "w"), env = {'MYSQLD_BOOTSTRAP': self.mysqld_bin })
-        utils.wait_for_proc(p)
+        utils.wait_for_proc(p, name=self.mysql_install_db_bin)
 
         self.command = [ self.mysqld_bin, '--defaults-file=' + self.configfile ]
 
@@ -123,7 +123,7 @@ class MySQL(server.Server):
         p = subprocess.Popen([self.mysql_bin, '--defaults-file=' + self.configfile,
                     '--user=root', '--password=root'], stdin=subprocess.PIPE)
         p.communicate(sql)
-        utils.wait_for_proc(p)
+        utils.wait_for_proc(p, name=self.mysql_bin)
 
         for db in self.databases:
             if 'scheme' not in db:
@@ -134,5 +134,5 @@ class MySQL(server.Server):
                 scheme = self.confpath(scheme)
                 p = subprocess.Popen([self.mysql_bin, '--defaults-file=' + self.configfile,
                             '--user=root', '--password=root', db['name']], stdin=open(scheme, 'r'))
-                utils.wait_for_proc(p)
+                utils.wait_for_proc(p, name=self.mysql_bin)
 

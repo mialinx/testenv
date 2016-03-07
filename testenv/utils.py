@@ -99,7 +99,7 @@ def write_yaml(path, cfg):
         fh.write(yaml.dump(cfg))
 
 
-# process controll funcs, may be move to separate module ? 
+# process controll funcs, may be move to separate module ?
 
 def find_binary(binary):
     if os.path.isfile(binary):
@@ -187,7 +187,9 @@ def wait_for_socket(addr, maxtime=5, sleeptime=0.1, timeout=0.01):
         sleeptotal += sleeptime
     return False
 
-def wait_for_proc(p):
+def wait_for_proc(p, name=None):
+    if name is None:
+        name = 'proc-' + str(p.pid)
     exitcode = p.wait()
     if exitcode != 0:
-        raise subprocess.CalledProcessError(exitcode)
+        raise subprocess.CalledProcessError(exitcode, name)
