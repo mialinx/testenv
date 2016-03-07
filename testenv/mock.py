@@ -7,19 +7,12 @@ import signal
 from . import server
 from wsgiref.simple_server import make_server
 
-class HttpMock(server.Server):
 
-    application = None
-    ip = ''
-    port = None
+class Mock(server.GenericServer):
 
     def init(self, **kwargs):
         kwargs['command'] = 'true'
-        super(HttpMock, self).init(**kwargs)
-        assert self.application is not None, "application attribute should be defined"
-        assert self.port is not None, "port attribute should be defined"
-        self.port = int(self.port)
-        self.address = (self.ip, self.port)
+        super(Mock, self).init(**kwargs)
 
     def start(self):
         pid = os.fork()
@@ -27,8 +20,11 @@ class HttpMock(server.Server):
             self.pid = pid
         else:
             self.setup_signals()
-            httpd = make_server(self.ip, self.port, self.application)
-            httpd.serve_forever()
+            self.open_log()
+            self.run()
+
+    def run():
+        raise Exception("should be implemented")
 
     def setup_signals(self):
         self.runner.reset_signals()
@@ -36,3 +32,28 @@ class HttpMock(server.Server):
             sys.exit(0)
         signal.signal(signal.SIGTERM, handle)
 
+    def open_log(self):
+        if self.stdout is not None:
+            self.stdout = open(self.basepath(self.stdout), 'w')
+            os.dup2(self.stdout.fileno(), sys.stdout.fileno())
+        if self.stderr is not None:
+            self.stderr = open(self.basepath(self.stderr), 'w')
+            os.dup2(self.stderr.fileno(), sys.stderr.fileno())
+
+
+class HttpMock(Mock):
+
+    application = None
+    ip = ''
+    port = None
+
+    def init(self, **kwargs):
+        super(HttpMock, self).init(**kwargs)
+        assert self.application is not None, "application attribute should be defined"
+        assert self.port is not None, "port attribute should be defined"
+        self.port = int(self.port)
+        self.address = (self.ip, self.port)
+
+    def run(self):
+        httpd = make_server(self.ip, self.port, self.application)
+        httpd.serve_forever()
