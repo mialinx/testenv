@@ -63,6 +63,7 @@ class Runner(object):
         environ = self.environ
         environ['confdir'] = self.confdir
         environ['basedir'] = self.basedir
+        environ['testenv'] = '1'
         def handle(s, trail):
             def one(match):
                 groups = match.groups()
@@ -175,7 +176,7 @@ class Runner(object):
             cmd = self.args.command
         else:
             cmd = ['env']
-        #self.exit_code = subprocess.call(cmd, stdout=self.orig_stdout, stderr=self.orig_stderr)
+        self.environ = { k: str(v) for k, v in self.environ.items() }
         p = subprocess.Popen(cmd, stdout=self.orig_stdout, stderr=self.orig_stderr, env=self.environ)
         p.wait()
         self.exit_code = p.returncode
