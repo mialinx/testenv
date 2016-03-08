@@ -1,0 +1,15 @@
+#!/usr/bin/python
+
+from setuptools import setup
+setup(
+    name = "testenv",
+    version = "0.01",
+    packages = ['testenv', 'testenv.contrib'],
+    scripts = ['scripts/testenv'],
+    author = "Dmitry Smal",
+    author_email = "mialinx@gmail.com",
+    description = "Tool to setup test environment for unit tests",
+    license = "MIT",
+    url = "https://github.com/mialinx/testenv",
+
+)
