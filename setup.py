@@ -3,7 +3,7 @@
 from setuptools import setup
 setup(
     name = "testenv",
-    version = "0.01",
+    version = "0.02",
     packages = ['testenv', 'testenv.contrib'],
     scripts = ['scripts/testenv'],
     author = "Dmitry Smal",
@@ -11,5 +11,7 @@ setup(
     description = "Tool to setup test environment for unit tests",
     license = "MIT",
     url = "https://github.com/mialinx/testenv",
-
+    install_requires=[
+        "PyYAML >= 3.11",
+    ]
 )
