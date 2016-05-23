@@ -2,8 +2,8 @@
 
 import os
 import os.path
-import subprocess
 import shlex
+import subprocess
 
 from . import utils
 
@@ -57,7 +57,8 @@ class Server(object):
         if self.pidfile is not None:
             self.pid = utils.wait_for_pid(self.pidfile, maxtime=self.start_timeout)
             if self.pid is None:
-                raise Exception("server {0} didn't started (pidfile) in {1} seconds".format(self.name, self.start_timeout))
+                raise Exception("server {0} didn't started (pidfile)"
+                        " in {1} seconds".format(self.name, self.start_timeout))
         else:
             self.pid = p.pid
 
@@ -72,10 +73,10 @@ class Server(object):
             raise Exception("server {0} didn't got ready in {1} seconds".format(self.name, self.start_timeout))
 
     def fill(self):
-        pass # optional
+        pass  # optional
 
     def ctrl(self, *args):
-        pass # optional
+        pass  # optional
 
     def is_running(self):
         if self.pid is None:
@@ -84,7 +85,6 @@ class Server(object):
 
     def stop(self):
         utils.stop_with_signal(self.pid, is_child=(self.pidfile is None))
-
 
 
 class GenericServer(Server):
@@ -108,7 +108,8 @@ class GenericServer(Server):
             assert type(kwargs['config']) == dict, "config option should be a dict"
             assert 'configfile' in kwargs, "configfile option missed"
             assert 'configtype' in kwargs, "configtype option missed"
-            assert kwargs['configtype'] in self.CONFIGTYPES, "configtype {0} is not supported".format(kwargs['configtype'])
+            assert kwargs['configtype'] in self.CONFIGTYPES, \
+                "configtype {0} is not supported".format(kwargs['configtype'])
         if 'stdout' in kwargs:
             assert isinstance(kwargs['stdout'], basestring), "stdout option should be a string"
         else:
@@ -130,4 +131,3 @@ class GenericServer(Server):
         if self.config is not None:
             config_writer = self.CONFIGTYPES[self.configtype]
             config_writer(self.basepath(self.configfile), self.config)
-

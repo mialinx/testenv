@@ -7,14 +7,13 @@ import signal
 import socket
 import subprocess
 import time
+
 import yaml
 
 
 user = getpass.getuser()
 
-
 promised_ports = {}
-
 
 proto_aliases = {
     'tcp': socket.SOCK_STREAM,
@@ -24,7 +23,7 @@ proto_aliases = {
 
 def free_port(ip, proto='tcp'):
     for port in range(64000, 32768, -1):
-        if promised_ports.has_key(port):
+        if port in promised_ports:
             continue
         stype = proto_aliases[proto]
         s = socket.socket(socket.AF_INET, stype)
@@ -111,12 +110,14 @@ def find_binary(binary):
             return full
     return None
 
+
 def spawn_process(binary, args):
     pid = os.fork()
     if not pid:
         os.execvp(binary, args)
     else:
         return pid
+
 
 def wait_for(cb, sleeptime=0.1, maxtime=5):
     sleeptotal = 0
@@ -128,13 +129,14 @@ def wait_for(cb, sleeptime=0.1, maxtime=5):
         sleeptotal += sleeptime
     return None
 
+
 def wait_for_pid(pidfile, sleeptime=0.1, maxtime=5):
     sleeptotal = 0
     while (maxtime > 0 and sleeptotal <= maxtime) or (maxtime == sleeptotal == 0):
         try:
             with contextlib.closing(open(pidfile, "r")) as fh:
                 return int(fh.readline().strip())
-        except IOError as e:
+        except IOError:
             pass
         time.sleep(sleeptime)
         sleeptotal += sleeptime
@@ -145,7 +147,7 @@ def is_running(pid):
     try:
         os.kill(pid, 0)
         return True
-    except Exception as e:
+    except Exception:
         return False
 
 
@@ -176,16 +178,16 @@ def wait_for_socket(addr, maxtime=5, sleeptime=0.1, timeout=0.01):
     s = socket.socket(family, socket.SOCK_STREAM)
     s.settimeout(timeout)
     while (maxtime > 0 and sleeptotal <= maxtime) or (maxtime == sleeptotal == 0):
-        conn = None
         try:
             s.connect(addr)
             s.close()
             return True
-        except socket.error as e:
+        except socket.error:
             pass
         time.sleep(sleeptime)
         sleeptotal += sleeptime
     return False
+
 
 def wait_for_proc(p, name=None):
     if name is None:

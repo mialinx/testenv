@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import contextlib
 import os
 import os.path
-import subprocess
-import contextlib
 
 from .. import server, utils
+
 
 class Tarantool(server.Server):
 
@@ -13,11 +13,11 @@ class Tarantool(server.Server):
     start_timeout = 50
 
     default_config = {
-        'background'       : True,
-        'log_level'        : 5,
-        'slab_alloc_arena' : 0.03,
-        'snapshot_period'  : 3*3600,
-        'snapshot_count'   : 2,
+        'background': True,
+        'log_level': 5,
+        'slab_alloc_arena': 0.03,
+        'snapshot_period': 3 * 3600,
+        'snapshot_count': 2,
     }
 
     def init(self, **kwargs):
@@ -28,15 +28,15 @@ class Tarantool(server.Server):
         self.config = utils.merge(
             self.default_config,
             {
-                'pid_file'  : self.pidfile,
-                'logger'    : os.path.join(self.basedir, 'tarantool.log'),
-                'work_dir'  : self.basedir,
+                'pid_file': self.pidfile,
+                'logger': os.path.join(self.basedir, 'tarantool.log'),
+                'work_dir': self.basedir,
             },
             kwargs['config'],
         )
         assert 'lua_script' in kwargs,  "tarantool server requires <lua_script> option"
         self.lua_script = self.confpath(kwargs['lua_script'])
-        #assert os.path.exists(self.lua_script),
+        # assert os.path.exists(self.lua_script),
         if 'lua_path' in kwargs:
             self.lua_path = self.confpath(kwargs['lua_path'])
         else:
@@ -67,4 +67,3 @@ class Tarantool(server.Server):
     def is_ready(self):
         res = utils.wait_for_socket(self.address, maxtime=0)
         return res
-

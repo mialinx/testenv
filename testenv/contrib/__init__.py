@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
-from .mysql import MySQL
-from .tarantool import Tarantool
-from .uwsgi import Uwsgi
-from .memcached import Memcached
-from .redis import Redis
-from ..server import GenericServer
+from .memcached import Memcached    # noqa
+from .mysql import MySQL            # noqa
+from .redis import Redis            # noqa
+from ..server import GenericServer  # noqa
+from .tarantool import Tarantool    # noqa
+from .uwsgi import Uwsgi            # noqa
 
-Generic = GenericServer # shortcut
+
+Generic = GenericServer  # shortcut

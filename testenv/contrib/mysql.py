@@ -2,10 +2,11 @@
 
 import os
 import os.path
-import subprocess
 import shutil
+import subprocess
 
 from .. import server, utils
+
 
 class MySQL(server.Server):
 
@@ -17,37 +18,36 @@ class MySQL(server.Server):
     default_config = {
         'client': {},
         'mysqld': {
-            'tmpdir'              : '/tmp',
-            'lc-messages-dir'     : '/usr/share/mysql',
-            'skip-external-locking' : '1',
+            'tmpdir': '/tmp',
+            'lc-messages-dir': '/usr/share/mysql',
+            'skip-external-locking': '1',
 
-            'key_buffer_size'     : '2M',
-            'max_allowed_packet'  : '2M',
-            'thread_stack'        : '192K',
-            'thread_cache_size'   : '4',
-            'myisam-recover'      : '0',
-            'max_connections'     : '100',
-            'table_cache'         : '64',
-            'thread_concurrency'  : '10',
+            'key_buffer_size': '2M',
+            'max_allowed_packet': '2M',
+            'thread_stack': '192K',
+            'thread_cache_size': '4',
+            'myisam-recover': '0',
+            'max_connections': '100',
+            'table_cache': '64',
+            'thread_concurrency': '10',
 
-            'query_cache_limit'   : '256K',
-            'query_cache_size'    : '4M',
+            'query_cache_limit': '256K',
+            'query_cache_size': '4M',
 
-            'general_log'         : '1',
-            'slow_query_log'      : '1',
-            'long_query_time'     : '1',
-            'log-queries-not-using-indexes' : '1',
+            'general_log': '1',
+            'slow_query_log': '1',
+            'long_query_time': '1',
+            'log-queries-not-using-indexes': '1',
         },
         'innodb': {
-            'innodb_buffer_pool_size'   : '8M',
-            'innodb_read_io_threads'    : '2',
-            'innodb_write_io_threads'   : '2',
-            'innodb_io_capacity'        : '300',
-            'innodb_log_file_size'      : '16M',
-            'innodb_flush_log_at_trx_commit':  '2',
+            'innodb_buffer_pool_size': '8M',
+            'innodb_read_io_threads': '2',
+            'innodb_write_io_threads': '2',
+            'innodb_io_capacity': '300',
+            'innodb_log_file_size': '16M',
+            'innodb_flush_log_at_trx_commit': '2',
         }
     }
-
 
     def init(self, **kwargs):
         # main configuration
@@ -89,7 +89,6 @@ class MySQL(server.Server):
         self.users = kwargs.get('users', [])
         assert type(self.users) == list, "<users> section should be a list"
 
-
     def prepare(self):
         super(MySQL, self).prepare()
         os.makedirs(self.datadir)
@@ -110,9 +109,9 @@ class MySQL(server.Server):
 
         self.command = [ self.mysqld_bin, '--defaults-file=' + self.configfile ]
 
-
     def fill(self):
-        subprocess.check_call([self.mysqladmin_bin, '--defaults-file=' + self.configfile, '-u', 'root', 'password', 'root'])
+        subprocess.check_call([self.mysqladmin_bin,
+            '--defaults-file=' + self.configfile, '-u', 'root', 'password', 'root'])
 
         sql = ''
         for db in self.databases:
@@ -136,4 +135,3 @@ class MySQL(server.Server):
                 p = subprocess.Popen([self.mysql_bin, '--defaults-file=' + self.configfile,
                             '--user=root', '--password=root', db['name']], stdin=open(scheme, 'r'))
                 utils.wait_for_proc(p, name=self.mysql_bin)
-

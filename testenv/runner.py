@@ -3,19 +3,21 @@
 import argparse
 import contextlib
 import os.path
-import pprint
 import re
 import shutil
 import signal
 import subprocess
 import sys
 import tempfile
+
 import yaml
+
 from . import utils
 
 """
 Main code, runner
 """
+
 
 class Runner(object):
 
@@ -64,6 +66,7 @@ class Runner(object):
         environ['confdir'] = self.confdir
         environ['basedir'] = self.basedir
         environ['testenv'] = '1'
+
         def handle(s, trail):
             def one(match):
                 groups = match.groups()
@@ -147,6 +150,7 @@ class Runner(object):
     def order_servers(self):
         ordered = []
         stack = []
+
         def add(server):
             if server in stack:
                 bad = ', '.join(s.name for s in stack)

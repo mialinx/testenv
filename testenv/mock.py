@@ -1,11 +1,12 @@
 # -*- coding: utf-8 -*-
 
 import os
-import sys
 import signal
+import sys
+
+from wsgiref.simple_server import make_server
 
 from . import server
-from wsgiref.simple_server import make_server
 
 
 class Mock(server.GenericServer):
@@ -28,6 +29,7 @@ class Mock(server.GenericServer):
 
     def setup_signals(self):
         self.runner.reset_signals()
+
         def handle(signal, frame):
             sys.exit(0)
         signal.signal(signal.SIGTERM, handle)

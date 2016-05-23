@@ -1,0 +1,5 @@
+[flake8]
+max-line-length = 120
+ignore = E128,E201,E202,E221,E251,E241,E272,I101
+exclude = migrations, local_settings.py
+import-order-style = smarkets

@@ -2,9 +2,9 @@
 
 import os
 import os.path
-import subprocess
 
 from .. import server, utils
+
 
 class Uwsgi(server.Server):
 
@@ -31,7 +31,7 @@ class Uwsgi(server.Server):
 
     def prepare(self):
         os.makedirs(self.basedir)
-        utils.write_ini(self.configfile, { 'uwsgi' : self.config })
+        utils.write_ini(self.configfile, { 'uwsgi': self.config })
 
     def start(self):
         super(Uwsgi, self).start()
@@ -39,4 +39,3 @@ class Uwsgi(server.Server):
 
     def stop(self):
         pass
-
