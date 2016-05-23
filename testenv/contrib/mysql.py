@@ -118,8 +118,9 @@ class MySQL(server.Server):
         for db in self.databases:
             sql += "CREATE DATABASE `{name}` DEFAULT CHARACTER SET 'utf8';\n".format(**db)
         for u in self.users:
-            sql += "CREATE USER '{name}'@'%' IDENTIFIED BY '{pass}';\n".format(**u)
-            sql += "GRANT ALL PRIVILEGES ON {grant}.* TO '{name}'@'%';\n".format(**u)
+            sql += "CREATE USER '{name}'@'localhost' IDENTIFIED BY '{pass}';\n".format(**u)
+            sql += "GRANT ALL PRIVILEGES ON {grant}.* TO '{name}'@'localhost';\n".format(**u)
+            sql += "FLUSH PRIVILEGES;\n"
         p = subprocess.Popen([self.mysql_bin, '--defaults-file=' + self.configfile,
                     '--user=root', '--password=root'], stdin=subprocess.PIPE)
         p.communicate(sql)
