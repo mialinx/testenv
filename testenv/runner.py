@@ -180,8 +180,11 @@ class Runner(object):
             cmd = self.args.command
         else:
             cmd = ['env']
-        self.environ = { k: str(v) for k, v in self.environ.items() }
-        p = subprocess.Popen(cmd, stdout=self.orig_stdout, stderr=self.orig_stderr, env=self.environ)
+        environ = {}
+        environ.update(os.environ)
+        environ.update(self.environ)
+        environ = { k: str(v) for k, v in environ.items() }
+        p = subprocess.Popen(cmd, stdout=self.orig_stdout, stderr=self.orig_stderr, env=environ)
         p.wait()
         self.exit_code = p.returncode
 
