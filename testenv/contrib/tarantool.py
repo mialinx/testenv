@@ -42,7 +42,9 @@ class Tarantool(server.Server):
         else:
             lua_script_dir = os.path.dirname(os.path.abspath(self.lua_script))
             self.lua_path = os.path.join(lua_script_dir, '?.lua')
-        self.address = self.config['listen'].split(':')
+        self.listen = self.config.pop('listen', None)
+        assert self.listen is not None, "listen option missed"
+        self.address = self.listen.split(':')
         self.command = [ self.tarantool_bin, self.configfile ]
 
     def prepare(self):
@@ -60,7 +62,8 @@ class Tarantool(server.Server):
                 cfg += '"' + str(v).replace('"', '\\"') + '"'
             cfg += ',\n'
         cfg += "})\n"
-        cfg += "dofile('{0}')".format(self.lua_script)
+        cfg += "dofile('{0}')\n".format(self.lua_script)
+        cfg += 'box.cfg({ listen = "' + str(self.listen) + '" })\n'
         with contextlib.closing(open(self.configfile, "w")) as fh:
             fh.write(cfg)
 
