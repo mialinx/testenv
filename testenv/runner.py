@@ -89,6 +89,8 @@ class Runner(object):
                     os.makedirs(environ[name])
                 elif kind == 'sock':
                     environ[name] = os.path.join(self.basedir, name + '.sock')
+                elif kind == 'env':
+                    environ[name] = os.environ.get(sname, '')
                 else:
                     raise ValueError("unexpected pattern {0} in {1}".format(match.group(0), '/'.join(trail)))
                 return environ[name]
