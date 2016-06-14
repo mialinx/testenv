@@ -186,7 +186,10 @@ class Runner(object):
         environ.update(os.environ)
         environ.update(self.environ)
         environ = { k: str(v) for k, v in environ.items() }
-        p = subprocess.Popen(cmd, stdout=self.orig_stdout, stderr=self.orig_stderr, env=environ)
+        try:
+            p = subprocess.Popen(cmd, stdout=self.orig_stdout, stderr=self.orig_stderr, env=environ)
+        except Exception as e:
+            raise Exception("can't start {0}: {1}".format(' '.join(cmd), str(e)))
         p.wait()
         self.exit_code = p.returncode
 
@@ -217,4 +220,4 @@ class Runner(object):
             if os.getpid() == self.pid:
                 self.stop_servers()
                 self.cleanup()
-                sys.exit(self.exit_code)
+        sys.exit(self.exit_code)
