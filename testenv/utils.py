@@ -100,14 +100,24 @@ def write_yaml(path, cfg):
 
 # process controll funcs, may be move to separate module ?
 
-def find_binary(binary):
-    if os.path.isfile(binary):
-        return binary
-    path = os.environ.get('PATH', os.getcwd())
-    for p in path.split(':'):
-        full = os.path.join(p, binary)
-        if os.path.isfile(full):
-            return full
+def is_exe(f):
+    return os.path.isfile(f) and os.access(f, os.X_OK)
+
+
+def find_binary(binary, cwd=None):
+    if cwd is None:
+        cwd = os.getcwd()
+    fpath, fname = os.path.split(binary)
+    if fpath:
+        exe_file = os.path.join(cwd, binary)
+        if is_exe(exe_file):
+            return exe_file
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, binary)
+            if is_exe(exe_file):
+                return exe_file
     return None
 
 

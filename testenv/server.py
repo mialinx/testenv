@@ -102,7 +102,9 @@ class GenericServer(Server):
         assert isinstance(command, (basestring, list)), "command should be a string or array"
         if isinstance(command, basestring):
             command = shlex.split(command)
-        command[0] = self.confpath(command[0])
+        binary = utils.find_binary(command[0], cwd=self.runner.confdir)
+        assert binary is not None, "Can't find executable for " + command[0]
+        command[0] = binary
         kwargs['command'] = command
         if 'config' in kwargs:
             assert type(kwargs['config']) == dict, "config option should be a dict"

@@ -37,7 +37,9 @@ class Runner(object):
         self.basedir = None  # dir with temporary env
         self.confdir = None  # dir with config
         self.pid = os.getpid()
-        self.exit_code = 0
+        self.exit_code = 1   # error by default
+        self.orig_stderr = sys.stderr
+        self.orig_stdout = sys.stdout
 
     def parse_params(self):
         parser = argparse.ArgumentParser(description='Process some integers.')
@@ -124,8 +126,8 @@ class Runner(object):
             return os.path.join(self.basedir, path)
 
     def open_log(self):
-        self.orig_stderr = os.fdopen(os.dup(sys.stderr.fileno()))
-        self.orig_stdout = os.fdopen(os.dup(sys.stdout.fileno()))
+        self.orig_stderr = os.fdopen(os.dup(sys.stderr.fileno()), 'w')
+        self.orig_stdout = os.fdopen(os.dup(sys.stdout.fileno()), 'w')
         if self.config['log'] is not None:
             log = open(self.basepath(self.config['log']), 'w', buffering=1)
             os.dup2(log.fileno(), sys.stderr.fileno())
@@ -172,6 +174,7 @@ class Runner(object):
     def start_servers(self):
         servers = self.order_servers()
         for s in servers:
+            sys.stderr.write("Starting {0}\n".format(s.name))
             s.prepare()
             s.start()
             s.wait_ready()
@@ -197,6 +200,7 @@ class Runner(object):
         servers = self.order_servers()
         for s in reversed(servers):
             if s.is_running():
+                sys.stderr.write("Stoping {0}\n".format(s.name))
                 s.stop()
 
     def cleanup(self):
