@@ -3,7 +3,7 @@
 from setuptools import setup
 setup(
     name = "testenv",
-    version = "0.07",
+    version = "0.08",
     packages = ['testenv', 'testenv.contrib'],
     scripts = ['scripts/testenv'],
     author = "Dmitry Smal",
