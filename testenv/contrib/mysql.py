@@ -2,8 +2,10 @@
 
 import os
 import os.path
+import re
 import shutil
 import subprocess
+from distutils.version import LooseVersion
 
 from .. import server, utils
 
@@ -26,10 +28,7 @@ class MySQL(server.Server):
             'max_allowed_packet': '2M',
             'thread_stack': '192K',
             'thread_cache_size': '4',
-            'myisam-recover': '0',
             'max_connections': '100',
-            'table_cache': '64',
-            'thread_concurrency': '10',
 
             'query_cache_limit': '256K',
             'query_cache_size': '4M',
@@ -54,17 +53,19 @@ class MySQL(server.Server):
         assert 'config' in kwargs and type(kwargs['config']) == dict, \
             "mysql server requires <config> section"
         self.configfile = os.path.join(self.basedir, 'my.cnf')
-        self.datadir = os.path.join(self.basedir, 'db')
+        self.mysql_basedir = os.path.join(self.basedir, 'db')
         self.config = utils.merge(
             self.default_config,
             kwargs['config'],
             {
                 'mysqld': {
                     'user':                 utils.user,
-                    'datadir':              self.datadir,
+                    'basedir':              self.mysql_basedir,
+                    'datadir':              os.path.join(self.mysql_basedir, 'data'),
                     'general_log_file':     os.path.join(self.basedir, 'mysql.log'),
                     'log_error':            os.path.join(self.basedir, 'error.log'),
                     'slow_query_log_file':  os.path.join(self.basedir, 'slow.log'),
+                    'init-file':            os.path.join(self.basedir, 'init.sql'),
                 }
             }
         )
@@ -88,10 +89,11 @@ class MySQL(server.Server):
         assert type(self.databases) == list, "<database> section should be a list"
         self.users = kwargs.get('users', [])
         assert type(self.users) == list, "<users> section should be a list"
+        self.scheme2users = {}
 
     def prepare(self):
         super(MySQL, self).prepare()
-        os.makedirs(self.datadir)
+        os.makedirs(self.mysql_basedir)
         utils.write_ini(self.configfile, self.config)
 
         # copy main file to avoid apparmor protection
@@ -103,35 +105,38 @@ class MySQL(server.Server):
         shutil.copymode(old_bin, new_bin)
         self.mysqld_bin = new_bin
 
-        p = subprocess.Popen([self.mysql_install_db_bin, '--defaults-file=' + self.configfile],
-                stdout=open("/dev/null", "w"), env = {'MYSQLD_BOOTSTRAP': self.mysqld_bin })
-        utils.wait_for_proc(p, name=self.mysql_install_db_bin)
+        with open(os.path.join(self.basedir, 'init.sql'), "w") as fh:
+            sql = ''
+            for db in self.databases:
+                sql += "CREATE DATABASE `{name}` DEFAULT CHARACTER SET 'utf8';\n".format(**db)
+            for u in self.users:
+                self.scheme2users[u['grant']] = [u['name'], u['pass']]
+                sql += "CREATE USER '{name}'@'localhost' IDENTIFIED BY '{pass}';\n".format(**u)
+                sql += "GRANT ALL PRIVILEGES ON {grant}.* TO '{name}'@'localhost';\n".format(**u)
+                sql += "FLUSH PRIVILEGES;\n"
+            fh.write(sql)
+
+        version = subprocess.check_output([self.mysqld_bin, '--version'])
+        match = re.search(r'\d+\.\d+\.\d+', version)
+        if match and LooseVersion(match.group(0)) >= LooseVersion('5.7.6'):
+            p = subprocess.Popen([self.mysqld_bin, '--defaults-file=' + self.configfile, '--initialize'])
+            utils.wait_for_proc(p, name=self.mysqld_bin)
+        else:
+            p = subprocess.Popen([self.mysql_install_db_bin, '--defaults-file=' + self.configfile],
+                    stdout=open("/dev/null", "w"), env = {'MYSQLD_BOOTSTRAP': self.mysqld_bin })
+            utils.wait_for_proc(p, name=self.mysql_install_db_bin)
 
         self.command = [ self.mysqld_bin, '--defaults-file=' + self.configfile ]
 
     def fill(self):
-        subprocess.check_call([self.mysqladmin_bin,
-            '--defaults-file=' + self.configfile, '-u', 'root', 'password', 'root'])
-
-        sql = ''
-        for db in self.databases:
-            sql += "CREATE DATABASE `{name}` DEFAULT CHARACTER SET 'utf8';\n".format(**db)
-        for u in self.users:
-            sql += "CREATE USER '{name}'@'localhost' IDENTIFIED BY '{pass}';\n".format(**u)
-            sql += "GRANT ALL PRIVILEGES ON {grant}.* TO '{name}'@'localhost';\n".format(**u)
-            sql += "FLUSH PRIVILEGES;\n"
-        p = subprocess.Popen([self.mysql_bin, '--defaults-file=' + self.configfile,
-                    '--user=root', '--password=root'], stdin=subprocess.PIPE)
-        p.communicate(sql)
-        utils.wait_for_proc(p, name=self.mysql_bin)
-
         for db in self.databases:
             if 'scheme' not in db:
                 continue
             if not isinstance(db['scheme'], list):
                 db['scheme'] = [ db['scheme'], ]
             for scheme in db['scheme']:
+                user, password = self.scheme2users.get(db['name']) or ['', '']
                 scheme = self.confpath(scheme)
                 p = subprocess.Popen([self.mysql_bin, '--defaults-file=' + self.configfile,
-                            '--user=root', '--password=root', db['name']], stdin=open(scheme, 'r'))
+                        '--user=' + user, '--password=' + password, db['name']], stdin=open(scheme, 'r'))
                 utils.wait_for_proc(p, name=self.mysql_bin)
