@@ -29,7 +29,7 @@ def free_port(ip, proto='tcp'):
         s = socket.socket(socket.AF_INET, stype)
         try:
             s.bind((ip, port))
-        except:
+        except Exception:
             continue
         else:
             promised_ports[port] = 1

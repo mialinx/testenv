@@ -3,7 +3,6 @@
 import os
 import os.path
 import re
-import shutil
 import subprocess
 from distutils.version import LooseVersion
 
@@ -12,16 +11,15 @@ from .. import server, utils
 
 class MySQL(server.Server):
 
-    mysqld_bin           = 'mysqld'
-    mysql_install_db_bin = 'mysql_install_db'
-    mysqladmin_bin       = 'mysqladmin'
-    mysql_bin            = 'mysql'
+    mysqld_bin            = 'mysqld'
+    mysql_install_db_bin  = 'mysql_install_db'
+    mysqladmin_bin        = 'mysqladmin'
+    mysql_bin             = 'mysql'
 
     default_config = {
         'client': {},
         'mysqld': {
             'tmpdir': '/tmp',
-            'lc-messages-dir': '/usr/share/mysql',
             'skip-external-locking': '1',
 
             'key_buffer_size': '2M',
@@ -53,15 +51,14 @@ class MySQL(server.Server):
         assert 'config' in kwargs and type(kwargs['config']) == dict, \
             "mysql server requires <config> section"
         self.configfile = os.path.join(self.basedir, 'my.cnf')
-        self.mysql_basedir = os.path.join(self.basedir, 'db')
+        self.datadir = os.path.join(self.basedir, 'data')
         self.config = utils.merge(
             self.default_config,
             kwargs['config'],
             {
                 'mysqld': {
                     'user':                 utils.user,
-                    'basedir':              self.mysql_basedir,
-                    'datadir':              os.path.join(self.mysql_basedir, 'data'),
+                    'datadir':              self.datadir,
                     'general_log_file':     os.path.join(self.basedir, 'mysql.log'),
                     'log_error':            os.path.join(self.basedir, 'error.log'),
                     'slow_query_log_file':  os.path.join(self.basedir, 'slow.log'),
@@ -79,10 +76,18 @@ class MySQL(server.Server):
         self.address = self.config['mysqld']['socket']
 
         # binaries and scripts
-        self.mysqld_bin           = kwargs.get('mysqld_bin', self.mysqld_bin)
-        self.mysql_install_db_bin = kwargs.get('mysql_install_db_bin', self.mysql_install_db_bin)
-        self.mysqladmin_bin       = kwargs.get('mysqladmin_bin', self.mysqladmin_bin)
-        self.mysql_bin            = kwargs.get('mysql_bin', self.mysql_bin)
+        self.mysqld_bin           = kwargs.get('mysqld_bin', utils.find_binary(self.mysqld_bin))
+        self.mysql_install_db_bin = kwargs.get('mysql_install_db_bin', utils.find_binary(self.mysql_install_db_bin))
+        self.mysqladmin_bin       = kwargs.get('mysqladmin_bin', utils.find_binary(self.mysqladmin_bin))
+        self.mysql_bin            = kwargs.get('mysql_bin', utils.find_binary(self.mysql_bin))
+
+        self.mysql_basedir = kwargs.get('mysql_base_dir', os.path.dirname(os.path.dirname(self.mysqld_bin)))
+        self.config['mysqld'].setdefault('basedir', self.mysql_basedir)
+
+        version = subprocess.check_output([self.mysqld_bin, '--version'])
+        match = re.search(r'\d+\.\d+\.\d+', version)
+        self.vendor = 'MariaDB' in version and 'MariaDB' or 'MySQL'
+        self.version = match.group(0)
 
         # users and schemas
         self.databases = kwargs.get('databases', [])
@@ -93,17 +98,7 @@ class MySQL(server.Server):
 
     def prepare(self):
         super(MySQL, self).prepare()
-        os.makedirs(self.mysql_basedir)
         utils.write_ini(self.configfile, self.config)
-
-        # copy main file to avoid apparmor protection
-        old_bin = utils.find_binary(self.mysqld_bin)
-        if old_bin is None:
-            raise Exception("failed to find mysqld binary: " + self.mysqld_bin)
-        new_bin = os.path.join(self.basedir, 'mysqld')
-        shutil.copyfile(old_bin, new_bin)
-        shutil.copymode(old_bin, new_bin)
-        self.mysqld_bin = new_bin
 
         with open(os.path.join(self.basedir, 'init.sql'), "w") as fh:
             sql = ''
@@ -116,14 +111,19 @@ class MySQL(server.Server):
                 sql += "FLUSH PRIVILEGES;\n"
             fh.write(sql)
 
-        version = subprocess.check_output([self.mysqld_bin, '--version'])
-        match = re.search(r'\d+\.\d+\.\d+', version)
-        if match and LooseVersion(match.group(0)) >= LooseVersion('5.7.6'):
+        if self.vendor == 'MySQL' and LooseVersion(self.version) >= LooseVersion('5.7.6'):
             p = subprocess.Popen([self.mysqld_bin, '--defaults-file=' + self.configfile, '--initialize'])
             utils.wait_for_proc(p, name=self.mysqld_bin)
         else:
-            p = subprocess.Popen([self.mysql_install_db_bin, '--defaults-file=' + self.configfile],
-                    stdout=open("/dev/null", "w"), env = {'MYSQLD_BOOTSTRAP': self.mysqld_bin })
+            p = subprocess.Popen(
+                [
+                    self.mysql_install_db_bin,
+                    '--defaults-file=' + self.configfile,
+                    '--basedir=' + self.mysql_basedir,
+                    '--datadir=' + self.datadir
+                ],
+                env = {'MYSQLD_BOOTSTRAP': self.mysqld_bin }
+            )
             utils.wait_for_proc(p, name=self.mysql_install_db_bin)
 
         self.command = [ self.mysqld_bin, '--defaults-file=' + self.configfile ]

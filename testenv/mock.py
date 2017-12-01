@@ -3,7 +3,6 @@
 import os
 import signal
 import sys
-
 from wsgiref.simple_server import make_server
 
 from . import server
