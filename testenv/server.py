@@ -63,6 +63,7 @@ class Server(object):
                         " in {1} seconds".format(self.name, self.start_timeout))
         else:
             self.pid = p.pid
+        sys.stderr.write("pid = " + str(self.pid) + "\n")
 
     def is_ready(self):
         if self.address is not None:

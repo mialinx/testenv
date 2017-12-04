@@ -13,4 +13,4 @@ class Memcached(server.Server):
         self.ip = kwargs['ip']
         assert 'port' in kwargs, "memcached server require <port> option"
         self.port = kwargs['port']
-        self.command = [ self.binary, '-l ' + self.ip, '-p ' + self.port ]
+        self.command = [ self.binary, '-l', self.ip, '-p', self.port ]
