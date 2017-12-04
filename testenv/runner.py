@@ -9,6 +9,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import traceback
 
 import yaml
 
@@ -213,6 +214,7 @@ class Runner(object):
         sys.path.append(self.confdir)
         self.read_config()
         self.setup_signals()
+
         try:
             self.create_basedir()
             self.open_log()
@@ -220,6 +222,8 @@ class Runner(object):
             self.create_servers()
             self.start_servers()
             self.run_command()
+        except Exception:
+            traceback.print_exc(limit=100, file=sys.stderr)
         finally:
             if os.getpid() == self.pid:
                 self.stop_servers()

@@ -4,6 +4,7 @@ import os
 import os.path
 import shlex
 import subprocess
+import sys
 
 from . import utils
 
@@ -53,6 +54,7 @@ class Server(object):
             self.stdout = open(self.basepath(self.stdout), 'w')
         if self.stderr is not None:
             self.stderr = open(self.basepath(self.stderr), 'w')
+        sys.stderr.write(" ".join(self.command) + "\n")
         p = subprocess.Popen(self.command, stdout=self.stdout, stderr=self.stderr, env=self.environ, cwd=self.basedir)
         if self.pidfile is not None:
             self.pid = utils.wait_for_pid(self.pidfile, maxtime=self.start_timeout)
